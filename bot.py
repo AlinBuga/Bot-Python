@@ -18,12 +18,12 @@ scrollBarY=550
 levels10=True
 
 class Erou:
-    def __init__(self,nume,scrollPixels):
+    def __init__(self,nume,scrollUnits):
         global butonUpgradeY
         self.nume=nume
         self.upgradeX=butonUpgradeX
         self.upgradeY=butonUpgradeY
-        self.scrollPixels=scrollPixels
+        self.scrollUnits=scrollUnits
         if butonUpgradeY < 946:
             butonUpgradeY=butonUpgradeY+152
 
@@ -44,24 +44,32 @@ class Erou:
         #     pyautogui.keyDown('shift')
 
         pyautogui.moveTo(self.upgradeX,self.upgradeY)
-        for i in range(1, self.scrollPixels + 1):
-            pyautogui.scroll(-self.scrollPixels)
+        for i in range(1, self.scrollUnits + 1):
+            pyautogui.scroll(-self.scrollUnits)
             pyautogui.move(0, -65)
+
+        if self.scrollUnits == 9:
+            pyautogui.scroll(self.scrollUnits)
+            self.upgradeY=self.upgradeY+152
         
         pyautogui.click()
-        pyautogui.click()
-        pyautogui.click()
-        pyautogui.click()
-        pyautogui.click()
+        #pyautogui.click()
+        #pyautogui.click()
+        #pyautogui.click()
+        #pyautogui.click()
 
         #dau click pe un powerup random
         random_number = random.randint(0, 6)     # pot sa fie maxim 7 power upuri per erou
         pyautogui.move(offsetPowerX+random_number*54,offsetPowerY)
         pyautogui.click()
 
-        for i in range(1, self.scrollPixels + 1):
-            pyautogui.scroll(self.scrollPixels)
+        for i in range(1, self.scrollUnits + 1):
+            pyautogui.scroll(self.scrollUnits)
             pyautogui.move(0, 65)
+        
+        if self.scrollUnits == 9:
+            pyautogui.scroll(-self.scrollUnits)
+            self.upgradeY=self.upgradeY-152
     
         # if levels10 == True:
         #     pyautogui.keyUp('shift')
@@ -82,7 +90,9 @@ eroi = [
     Erou("Forest",5),
     Erou("Alexa",6),
     Erou("Natalia",7),
-    Erou("Mercedes",8)
+    Erou("Mercedes",8),
+    Erou("Bobby",9),
+    Erou("Broyle",10)
 ]
 
 
@@ -144,7 +154,7 @@ if sys.argv[1]=="ClickerHeroes":
     newLevelInterval = 60  # 60 secunde
 
     newUpgradeCheck=time.time()
-    newUpgradeInterval=5 # 50 secudne
+    newUpgradeInterval=50 # 50 secudne
 
     abilityActivationPress=time.time()
     abilityActivationInterval=600 # 10 minute
@@ -176,15 +186,17 @@ if sys.argv[1]=="ClickerHeroes":
         if isBoss==True and time.time() - bossStart >= bossInterval:
             isBoss=False
             pyautogui.click(1530, 75)
+            time.sleep(0.2)
             try:
                 loc1=pyautogui.locateCenterOnScreen('boss_clock_clicker.png',confidence=0.8)
                 # 1350 70 coordonatele de la nivelul anterior
                 # ma duc 4 nivele in spate
-                pyautogui.click(1350,70)
-                pyautogui.click(1350,70)
-                pyautogui.click(1350,70)
-                pyautogui.click(1350,70)
-                print("Am trecut la nivelul anterior pentru a farma mai mult!")
+                if loc1:
+                    pyautogui.click(1350,70)
+                    pyautogui.click(1350,70)
+                    pyautogui.click(1350,70)
+                    pyautogui.click(1350,70)
+                    print("Am trecut la nivelul anterior pentru a farma mai mult!")
             except:
                 print("Am reusit sa bat bossul")
 
