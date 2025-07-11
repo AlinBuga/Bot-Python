@@ -48,15 +48,15 @@ class Erou:
             pyautogui.scroll(-self.scrollUnits)
             pyautogui.move(0, -65)
 
-        if self.scrollUnits == 9:
-            pyautogui.scroll(self.scrollUnits)
-            self.upgradeY=self.upgradeY+152
+        # if self.scrollUnits == 9:
+        #     pyautogui.scroll(self.scrollUnits)
+        #     self.upgradeY=self.upgradeY+152
         
         pyautogui.click()
-        #pyautogui.click()
-        #pyautogui.click()
-        #pyautogui.click()
-        #pyautogui.click()
+        pyautogui.click()
+        pyautogui.click()
+        pyautogui.click()
+        pyautogui.click()
 
         #dau click pe un powerup random
         random_number = random.randint(0, 6)     # pot sa fie maxim 7 power upuri per erou
@@ -67,9 +67,9 @@ class Erou:
             pyautogui.scroll(self.scrollUnits)
             pyautogui.move(0, 65)
         
-        if self.scrollUnits == 9:
-            pyautogui.scroll(-self.scrollUnits)
-            self.upgradeY=self.upgradeY-152
+        # if self.scrollUnits == 9:
+        #     pyautogui.scroll(-self.scrollUnits)
+        #     self.upgradeY=self.upgradeY-152
     
         # if levels10 == True:
         #     pyautogui.keyUp('shift')
@@ -90,9 +90,9 @@ eroi = [
     Erou("Forest",5),
     Erou("Alexa",6),
     Erou("Natalia",7),
-    Erou("Mercedes",8),
-    Erou("Bobby",9),
-    Erou("Broyle",10)
+    Erou("Mercedes",8)
+    #Erou("Bobby",9),
+    #Erou("Broyle",10)
 ]
 
 
@@ -216,8 +216,48 @@ if sys.argv[1]=="ClickerHeroes":
             newUpgradeCheck = time.time()  # resetez timerul
 
         #880 550
+elif sys.argv[1]=="TicTacToe":
+    print("TicTacToe")
 
-        
+    cellsCoordinates=[
+        (679,215),
+        (866,215),
+        (1059,215),
+        (679,403),
+        (866,403),
+        (1059,403),
+        (679,595),
+        (866,595),
+        (1059,595)
+    ]
+
+    # click pe searchbar
+    pyautogui.click(730, 1050)
+
+    # caut google
+    pyautogui.write("Google", interval=0.05)
+    time.sleep(1)
+
+    # deschid google
+    pyautogui.press('enter')
+
+    time.sleep(1)
+    loc=pyautogui.locateCenterOnScreen('google_icon.png',confidence=0.8)
+    #pyautogui.click(loc)
+    time.sleep(1)
+
+    #caut X si 0
+    pyautogui.write("https://playtictactoe.org/",interval=0.05)
+    pyautogui.press('enter')
+
+    #astept sa se incarce pagina
+    time.sleep(3)
+
+    i=0
+    for cell in cellsCoordinates:
+        screenshot = pyautogui.screenshot(region=(cell[0], cell[1], 182, 183))
+        screenshot.save(f"portiune_screenshot{i}.png")
+        i=i+1
 else:
     # deschid notepad
     subprocess.Popen('notepad.exe')
