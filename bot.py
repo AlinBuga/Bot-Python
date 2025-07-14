@@ -4,6 +4,7 @@ import subprocess
 import sys
 import random
 import win32api
+from PIL import Image, ImageChops
 import win32con
 
 butonUpgradeY=490
@@ -103,6 +104,123 @@ def check_new_level(template_path, confidence=0.8):
     else:
         print("Inca nu se poate trece la un nivel nou!")
 
+def check_win_ttt(table):
+    winner = '-'
+    
+    # Verifică liniile și coloanele
+    for i in range(0, 3):
+        if table[i][0] == table[i][1] and table[i][1] == table[i][2] and table[i][0] != '-':
+            winner = table[i][0]
+        if table[0][i] == table[1][i] and table[1][i] == table[2][i] and table[0][i] != '-':
+            winner = table[0][i]
+    
+    # Verifică diagonalele
+    if table[0][0] == table[1][1] and table[1][1] == table[2][2] and table[0][0] != '-':
+        winner = table[0][0]
+    if table[0][2] == table[1][1] and table[1][1] == table[2][0] and table[1][1] != '-':
+        winner = table[1][1]
+    
+    return winner
+
+def is_board_full(table):
+    """Verifică dacă tabla e plină (pentru remiză)"""
+    for i in range(3):
+        for j in range(3):
+            if table[i][j] == '-':
+                return False
+    return True
+
+def minimax(table, depth, is_maximizing, player, opponent):
+    """
+    Algoritmul minimax pentru a găsi cea mai bună mișcare.
+    """
+    winner = check_win_ttt(table)
+    
+    # Cazuri terminale
+    if winner == player:
+        return 1
+    elif winner == opponent:
+        return -1
+    elif is_board_full(table):  # Remiză - tabla plină, fără câștigător
+        return 0
+    
+    if is_maximizing:
+        best_score = float('-inf')
+        for i in range(3):
+            for j in range(3):
+                if table[i][j] == '-':
+                    table[i][j] = player
+                    score = minimax(table, depth + 1, False, player, opponent)
+                    table[i][j] = '-'
+                    best_score = max(score, best_score)
+        return best_score
+    else:
+        best_score = float('inf')
+        for i in range(3):
+            for j in range(3):
+                if table[i][j] == '-':
+                    table[i][j] = opponent
+                    score = minimax(table, depth + 1, True, player, opponent)
+                    table[i][j] = '-'
+                    best_score = min(score, best_score)
+        return best_score
+
+def get_next_move_ttt(table, player='X'):
+    """
+    Găsește cea mai bună mișcare pentru jucătorul specificat.
+    
+    Args:
+        table: Tabla de joc 3x3 (listă de liste)
+        player: Jucătorul curent ('X' sau '0')
+    
+    Returns:
+        Tuple (i, j) cu cea mai bună mișcare sau (-1, -1) dacă tabla e plină
+    """
+    # Determină adversarul - CORECTAT: '0' în loc de 'O'
+    opponent = '0' if player == 'X' else 'X'
+    
+    # Verifică dacă jocul s-a terminat
+    if check_win_ttt(table) != '-' or is_board_full(table):
+        return (-1, -1)
+    
+    best_score = float('-inf')
+    best_move = (-1, -1)
+    
+    # Încearcă toate mișcările posibile
+    for i in range(3):
+        for j in range(3):
+            if table[i][j] == '-':
+                # Simulează mișcarea
+                table[i][j] = player
+                score = minimax(table, 0, False, player, opponent)
+                table[i][j] = '-'  # Anulează mișcarea
+                
+                # Actualizează cea mai bună mișcare
+                if score > best_score:
+                    best_score = score
+                    best_move = (i, j)
+    
+    return best_move
+
+
+def get_enemy_move(table,cellsCoordinates):
+    for i in range(0,3):
+        for j in range(0,3):
+            if table[i][j]=='-':
+                screenshot = pyautogui.screenshot(region=(cellsCoordinates[3*i+j][0], cellsCoordinates[3*i+j][1], 182, 183))
+                img = Image.open(f"portiune_screenshot{3*i+j}.png")
+
+                #vreau sa vad celula in care exista diferente de pixeli (adica in care adversarul a facut mutarea)
+                diff = ImageChops.difference(screenshot, img)
+
+                if diff.getbbox() is None:
+                    print("Nu s-a facut mutarea in aceasta celula")
+                else:
+                    table[i][j]='0'
+
+
+    
+
 print("Scriptul a inceput")
 
 if sys.argv[1]=="ClickerHeroes":
@@ -147,7 +265,7 @@ if sys.argv[1]=="ClickerHeroes":
             closeNotif=True
         except:
             attempts=attempts+1
-            if attempts > 50:
+            if attempts > 100:
                 break
 
     newLevelPress = time.time()
@@ -231,6 +349,8 @@ elif sys.argv[1]=="TicTacToe":
         (1059,595)
     ]
 
+    table=[['-','-','-'],['-','-','-'],['-','-','-']]
+
     # click pe searchbar
     pyautogui.click(730, 1050)
 
@@ -242,7 +362,7 @@ elif sys.argv[1]=="TicTacToe":
     pyautogui.press('enter')
 
     time.sleep(1)
-    loc=pyautogui.locateCenterOnScreen('google_icon.png',confidence=0.8)
+    #loc=pyautogui.locateCenterOnScreen('google_icon.png',confidence=0.8)
     #pyautogui.click(loc)
     time.sleep(1)
 
@@ -253,11 +373,52 @@ elif sys.argv[1]=="TicTacToe":
     #astept sa se incarce pagina
     time.sleep(3)
 
-    i=0
-    for cell in cellsCoordinates:
-        screenshot = pyautogui.screenshot(region=(cell[0], cell[1], 182, 183))
-        screenshot.save(f"portiune_screenshot{i}.png")
-        i=i+1
+    # i=0
+    # for cell in cellsCoordinates:
+    #     screenshot = pyautogui.screenshot(region=(cell[0], cell[1], 182, 183))
+    #     screenshot.save(f"portiune_screenshot{i}.png")
+    #     i=i+1
+
+    game=0
+    while True:
+        print("yey")
+        gameOver=False
+        
+        if game == 0:
+            yourTurn=True
+            game=1
+        else:
+            yourTurn=False
+            game=0
+        while gameOver==False:
+            print("yeey")
+            
+            if yourTurn==True:
+                print("Your Turn")
+
+                (x,y)=get_next_move_ttt(table,'X')
+                table[x][y]='X'
+                pyautogui.click(cellsCoordinates[3*x+y])
+                yourTurn=False
+            else:
+                print("Enemy Turn")
+
+                get_enemy_move(table,cellsCoordinates)
+                yourTurn=True
+
+            win=check_win_ttt(table)
+            if win != '-' or (win=='-' and is_board_full(table)==True):
+                gameOver=True
+                time.sleep(1)
+                pyautogui.click(cellsCoordinates[0][0], cellsCoordinates[0][1])
+            time.sleep(1)
+
+
+        for i in range(0,3):
+            for j in range(0,3):
+                table[i][j]='-'
+
+        time.sleep(1)
 else:
     # deschid notepad
     subprocess.Popen('notepad.exe')
