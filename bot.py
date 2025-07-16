@@ -4,8 +4,110 @@ import subprocess
 import sys
 import random
 import win32api
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
+import pytesseract
+import re
 import win32con
+import cv2
+import numpy as np
+
+# def process_image_for_ocr(image):
+#     """Procesează imaginea pentru a îmbunătăți recunoașterea OCR"""
+    
+#     # Convertește PIL Image la numpy array pentru OpenCV
+#     img_array = np.array(image)
+    
+#     # Convertește la grayscale
+#     if len(img_array.shape) == 3:
+#         gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+#     else:
+#         gray = img_array
+    
+#     # Măărește dimensiunea imaginii (scale up)
+#     scale_factor = 4
+#     width = int(gray.shape[1] * scale_factor)
+#     height = int(gray.shape[0] * scale_factor)
+#     resized = cv2.resize(gray, (width, height), interpolation=cv2.INTER_CUBIC)
+    
+#     # Aplică threshold pentru a obține o imagine binar (alb-negru)
+#     _, thresh = cv2.threshold(resized, 127, 255, cv2.THRESH_BINARY)
+    
+#     # Aplică blur pentru a netezi marginile
+#     blurred = cv2.GaussianBlur(thresh, (1, 1), 0)
+    
+#     # Convertește înapoi la PIL Image
+#     processed_image = Image.fromarray(blurred)
+    
+#     return processed_image
+
+
+# # Configurează calea către Tesseract
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+# cnt=0
+
+# def extract_single_number_optimized(x,y):
+#     """Extrage un singur număr cu configurarea optimă"""
+
+#     global cnt
+    
+#     # Fă screenshot-ul
+#     screenshot1 = pyautogui.screenshot(region=(x+438, y-40, 80, 40))      #x y width height
+    
+#     # Mărește imaginea cu factor 6 (mai mare pentru mai multă precizie)
+#     scaled_img = screenshot1.resize((screenshot1.width * 6, screenshot1.height * 6), Image.LANCZOS)
+    
+#     # Convertește la grayscale
+#     gray_img = scaled_img.convert('L')
+    
+#     # Îmbunătățește contrastul
+#     enhancer = ImageEnhance.Contrast(gray_img)
+#     contrast_img = enhancer.enhance(2.5)
+    
+#     # Aplică sharpening pentru margini mai clare
+#     sharpened = contrast_img.filter(ImageFilter.SHARPEN)
+    
+#     # Salvează imaginea procesată pentru debugging
+#     sharpened.save(f"processed_number{cnt}.png")
+#     cnt=cnt+1
+    
+#     # PSM 8 - configurarea optimă pentru un singur cuvânt/număr
+#     config_optimal = '--psm 8 -c tessedit_char_whitelist=0123456789'
+    
+#     try:
+#         # Încearcă cu configurarea optimă
+#         text = pytesseract.image_to_string(sharpened, config=config_optimal).strip()
+#         print(f"PSM 8 rezultat: '{text}'")
+        
+#         if text and text.isdigit():
+#             return int(text)
+        
+#         # Dacă PSM 8 nu funcționează, încearcă PSM 7
+#         config_backup = '--psm 7 -c tessedit_char_whitelist=0123456789'
+#         text_backup = pytesseract.image_to_string(sharpened, config=config_backup).strip()
+#         print(f"PSM 7 rezultat: '{text_backup}'")
+        
+#         if text_backup and text_backup.isdigit():
+#             return int(text_backup)
+        
+#         # Ultima încercare cu PSM 6
+#         config_last = '--psm 6 -c tessedit_char_whitelist=0123456789'
+#         text_last = pytesseract.image_to_string(sharpened, config=config_last).strip()
+#         print(f"PSM 6 rezultat: '{text_last}'")
+        
+#         # Extrage numerele din orice rezultat
+#         numere = re.findall(r'\d+', text + text_backup + text_last)
+#         if numere:
+#             return int(numere[0])
+        
+#         return None
+        
+#     except Exception as e:
+#         print(f"Eroare OCR: {e}")
+#         return None
+
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 butonUpgradeY=490
 butonUpgradeX=180
@@ -15,7 +117,11 @@ offsetPowerY=40
 
 scrollBarX=880
 scrollBarY=550
+#550 455
+#370 -35 offset pana la LVL
 
+#700 480
+#150 25 height si width LVL
 levels10=True
 
 class Erou:
@@ -26,7 +132,7 @@ class Erou:
         self.upgradeY=butonUpgradeY
         self.scrollUnits=scrollUnits
         if butonUpgradeY < 946:
-            butonUpgradeY=butonUpgradeY+152
+            butonUpgradeY=butonUpgradeY+155  #152
 
     def click_upgrade(self):        #verificam daca este clickable (cand tin cursorul pe buton i se schimba culoarea)
         # global scrollBarY,scrollBarX
@@ -78,6 +184,22 @@ class Erou:
         # else:
         #     levels10=True
 
+    # def get_level(self):
+    #     pyautogui.moveTo(self.upgradeX,self.upgradeY)
+    #     for i in range(1, self.scrollUnits + 1):
+    #         pyautogui.scroll(-self.scrollUnits)
+    #         pyautogui.move(0, -65)
+
+    #     x, y = pyautogui.position()
+    #     number=extract_single_number_optimized(x,y)
+
+    #     print(number)
+
+    #     for i in range(1, self.scrollUnits + 1):
+    #         pyautogui.scroll(self.scrollUnits)
+    #         pyautogui.move(0, 65)
+
+
 
 eroi = [
     Erou("Cid",0),
@@ -107,14 +229,14 @@ def check_new_level(template_path, confidence=0.8):
 def check_win_ttt(table):
     winner = '-'
     
-    # Verifică liniile și coloanele
+    # verifica liniile și coloanele
     for i in range(0, 3):
         if table[i][0] == table[i][1] and table[i][1] == table[i][2] and table[i][0] != '-':
             winner = table[i][0]
         if table[0][i] == table[1][i] and table[1][i] == table[2][i] and table[0][i] != '-':
             winner = table[0][i]
     
-    # Verifică diagonalele
+    # verifica diagonalele
     if table[0][0] == table[1][1] and table[1][1] == table[2][2] and table[0][0] != '-':
         winner = table[0][0]
     if table[0][2] == table[1][1] and table[1][1] == table[2][0] and table[1][1] != '-':
@@ -123,7 +245,7 @@ def check_win_ttt(table):
     return winner
 
 def is_board_full(table):
-    """Verifică dacă tabla e plină (pentru remiză)"""
+    #verifica daca tabela e full
     for i in range(3):
         for j in range(3):
             if table[i][j] == '-':
@@ -131,17 +253,15 @@ def is_board_full(table):
     return True
 
 def minimax(table, depth, is_maximizing, player, opponent):
-    """
-    Algoritmul minimax pentru a găsi cea mai bună mișcare.
-    """
+    #gasim cele mai bune cazuri
     winner = check_win_ttt(table)
     
-    # Cazuri terminale
+    # cazuri terminale
     if winner == player:
         return 1
     elif winner == opponent:
         return -1
-    elif is_board_full(table):  # Remiză - tabla plină, fără câștigător
+    elif is_board_full(table):  # egal
         return 0
     
     if is_maximizing:
@@ -166,36 +286,27 @@ def minimax(table, depth, is_maximizing, player, opponent):
         return best_score
 
 def get_next_move_ttt(table, player='X'):
-    """
-    Găsește cea mai bună mișcare pentru jucătorul specificat.
-    
-    Args:
-        table: Tabla de joc 3x3 (listă de liste)
-        player: Jucătorul curent ('X' sau '0')
-    
-    Returns:
-        Tuple (i, j) cu cea mai bună mișcare sau (-1, -1) dacă tabla e plină
-    """
-    # Determină adversarul - CORECTAT: '0' în loc de 'O'
+    #cea mai buna miscare pentru un jucator
+
     opponent = '0' if player == 'X' else 'X'
     
-    # Verifică dacă jocul s-a terminat
+    # verifica daca jocul s a terminat
     if check_win_ttt(table) != '-' or is_board_full(table):
         return (-1, -1)
     
     best_score = float('-inf')
     best_move = (-1, -1)
     
-    # Încearcă toate mișcările posibile
+    # incearca toate miscarile posibile
     for i in range(3):
         for j in range(3):
             if table[i][j] == '-':
-                # Simulează mișcarea
+                # simuleaza miscarea
                 table[i][j] = player
                 score = minimax(table, 0, False, player, opponent)
-                table[i][j] = '-'  # Anulează mișcarea
+                table[i][j] = '-'  # anuleaza miscarea
                 
-                # Actualizează cea mai bună mișcare
+                # actualizeaza cea mai buna miscare
                 if score > best_score:
                     best_score = score
                     best_move = (i, j)
@@ -208,7 +319,7 @@ def get_enemy_move(table,cellsCoordinates):
         for j in range(0,3):
             if table[i][j]=='-':
                 screenshot = pyautogui.screenshot(region=(cellsCoordinates[3*i+j][0], cellsCoordinates[3*i+j][1], 182, 183))
-                img = Image.open(f"portiune_screenshot{3*i+j}.png")
+                img = Image.open("empty_cell.png")
 
                 #vreau sa vad celula in care exista diferente de pixeli (adica in care adversarul a facut mutarea)
                 diff = ImageChops.difference(screenshot, img)
@@ -268,6 +379,33 @@ if sys.argv[1]=="ClickerHeroes":
             if attempts > 100:
                 break
 
+    # print(pytesseract.get_tesseract_version())
+
+    # screenshot1 = pyautogui.screenshot(region=(618, 450, 80, 40))  # x, y, width, height
+    # screenshot1.save("zona.png")  # doar pentru debug
+    # # OCR pe imagine
+    # text = pytesseract.image_to_string(screenshot1)
+
+    # # Extrage doar cifrele
+    # numere = re.findall(r'\d+', text)
+    # print("Numere detectate:", numere)
+
+    # number = extract_single_number_optimized()
+    # if number:
+    #     print(f"✅ Numărul detectat: {number}")
+    # else:
+    #     print("❌ Nu s-a putut detecta numărul")
+
+    # quit()
+    # exit()
+
+    # time.sleep(100)
+
+    # for erou in eroi:
+    #     erou.get_level()
+
+    # time.sleep(100)
+
     newLevelPress = time.time()
     newLevelInterval = 60  # 60 secunde
 
@@ -285,6 +423,8 @@ if sys.argv[1]=="ClickerHeroes":
     searchBossStart=time.time()
 
     pyautogui.write("123456789")  # hot keys pentru abilitatile speciale
+
+    cnt=0
 
     # incep farmul
     while True:
@@ -329,8 +469,14 @@ if sys.argv[1]=="ClickerHeroes":
             abilityActivationPress=time.time()  # resetez timerul
 
         if time.time() - newUpgradeCheck >= newUpgradeInterval:
-            for erou in eroi:
-                erou.click_upgrade()
+            cnt=cnt+1
+            if cnt<4:
+                for erou in reversed(eroi):
+                    erou.click_upgrade()
+            else:
+                cnt=0
+                for erou in eroi:
+                    erou.click_upgrade()
             newUpgradeCheck = time.time()  # resetez timerul
 
         #880 550
