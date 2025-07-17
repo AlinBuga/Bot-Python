@@ -10,102 +10,93 @@ import re
 import win32con
 import cv2
 import numpy as np
+import os
+from datetime import datetime
 
-# def process_image_for_ocr(image):
-#     """Procesează imaginea pentru a îmbunătăți recunoașterea OCR"""
+# Logging class
+class TicTacToeLogger:
+    def __init__(self, log_file="tictactoe_log.txt"):
+        self.log_file = log_file
+        self.current_user = self.get_current_user()
+        self.game_number = 0
+        self.session_start = datetime.now()
+        
+        # Write session start
+        self.write_log(f"=== SESSION START ===")
+        self.write_log(f"User: {self.current_user}")
+        self.write_log(f"Start time: {self.session_start.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.write_log(f"====================")
     
-#     # Convertește PIL Image la numpy array pentru OpenCV
-#     img_array = np.array(image)
+    def get_current_user(self):
+        """Get current Windows user using whoami command"""
+        try:
+            result = subprocess.run(['whoami'], capture_output=True, text=True, shell=True)
+            return result.stdout.strip()
+        except Exception as e:
+            return f"Unknown_User"
     
-#     # Convertește la grayscale
-#     if len(img_array.shape) == 3:
-#         gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-#     else:
-#         gray = img_array
+    def write_log(self, message):
+        """Write message to log file with timestamp"""
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_entry = f"[{timestamp}] {message}\n"
+        
+        with open(self.log_file, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+        
+        print(log_entry.strip())  # Also print to console
     
-#     # Măărește dimensiunea imaginii (scale up)
-#     scale_factor = 4
-#     width = int(gray.shape[1] * scale_factor)
-#     height = int(gray.shape[0] * scale_factor)
-#     resized = cv2.resize(gray, (width, height), interpolation=cv2.INTER_CUBIC)
+    def log_game_start(self, game_number, player_starts):
+        """Log the start of a new game"""
+        self.game_number = game_number
+        self.game_start_time = datetime.now()
+        
+        self.write_log(f"--- GAME {game_number} START ---")
+        self.write_log(f"Player starts: {'Yes' if player_starts else 'No'}")
+        self.write_log(f"Initial board: Empty")
     
-#     # Aplică threshold pentru a obține o imagine binar (alb-negru)
-#     _, thresh = cv2.threshold(resized, 127, 255, cv2.THRESH_BINARY)
+    def log_move(self, player, x, y, board_state):
+        """Log a move made by player or enemy"""
+        self.write_log(f"Move: {player} -> Position ({x},{y})")
+        self.write_log(f"Board state: {self.format_board(board_state)}")
     
-#     # Aplică blur pentru a netezi marginile
-#     blurred = cv2.GaussianBlur(thresh, (1, 1), 0)
+    def log_game_end(self, result, final_board):
+        """Log the end of a game"""
+        game_duration = datetime.now() - self.game_start_time
+        
+        self.write_log(f"Game result: {result}")
+        self.write_log(f"Final board: {self.format_board(final_board)}")
+        self.write_log(f"Game duration: {game_duration.total_seconds():.2f} seconds")
+        self.write_log(f"--- GAME {self.game_number} END ---")
+        self.write_log("")  # Empty line for readability
     
-#     # Convertește înapoi la PIL Image
-#     processed_image = Image.fromarray(blurred)
+    def log_error(self, error_message):
+        """Log an error"""
+        self.write_log(f"ERROR: {error_message}")
     
-#     return processed_image
+    def log_info(self, info_message):
+        """Log general information"""
+        self.write_log(f"INFO: {info_message}")
+    
+    def format_board(self, board):
+        """Format board state for logging"""
+        board_str = ""
+        for i in range(3):
+            for j in range(3):
+                board_str += board[i][j] if board[i][j] != '-' else ' '
+            if i < 2:
+                board_str += "|"
+        return board_str
+    
+    def log_session_end(self):
+        """Log session end"""
+        session_duration = datetime.now() - self.session_start
+        self.write_log(f"=== SESSION END ===")
+        self.write_log(f"Total session time: {session_duration.total_seconds():.2f} seconds")
+        self.write_log(f"Total games played: {self.game_number}")
+        self.write_log(f"==================")
 
-
-# # Configurează calea către Tesseract
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-# cnt=0
-
-# def extract_single_number_optimized(x,y):
-#     """Extrage un singur număr cu configurarea optimă"""
-
-#     global cnt
-    
-#     # Fă screenshot-ul
-#     screenshot1 = pyautogui.screenshot(region=(x+438, y-40, 80, 40))      #x y width height
-    
-#     # Mărește imaginea cu factor 6 (mai mare pentru mai multă precizie)
-#     scaled_img = screenshot1.resize((screenshot1.width * 6, screenshot1.height * 6), Image.LANCZOS)
-    
-#     # Convertește la grayscale
-#     gray_img = scaled_img.convert('L')
-    
-#     # Îmbunătățește contrastul
-#     enhancer = ImageEnhance.Contrast(gray_img)
-#     contrast_img = enhancer.enhance(2.5)
-    
-#     # Aplică sharpening pentru margini mai clare
-#     sharpened = contrast_img.filter(ImageFilter.SHARPEN)
-    
-#     # Salvează imaginea procesată pentru debugging
-#     sharpened.save(f"processed_number{cnt}.png")
-#     cnt=cnt+1
-    
-#     # PSM 8 - configurarea optimă pentru un singur cuvânt/număr
-#     config_optimal = '--psm 8 -c tessedit_char_whitelist=0123456789'
-    
-#     try:
-#         # Încearcă cu configurarea optimă
-#         text = pytesseract.image_to_string(sharpened, config=config_optimal).strip()
-#         print(f"PSM 8 rezultat: '{text}'")
-        
-#         if text and text.isdigit():
-#             return int(text)
-        
-#         # Dacă PSM 8 nu funcționează, încearcă PSM 7
-#         config_backup = '--psm 7 -c tessedit_char_whitelist=0123456789'
-#         text_backup = pytesseract.image_to_string(sharpened, config=config_backup).strip()
-#         print(f"PSM 7 rezultat: '{text_backup}'")
-        
-#         if text_backup and text_backup.isdigit():
-#             return int(text_backup)
-        
-#         # Ultima încercare cu PSM 6
-#         config_last = '--psm 6 -c tessedit_char_whitelist=0123456789'
-#         text_last = pytesseract.image_to_string(sharpened, config=config_last).strip()
-#         print(f"PSM 6 rezultat: '{text_last}'")
-        
-#         # Extrage numerele din orice rezultat
-#         numere = re.findall(r'\d+', text + text_backup + text_last)
-#         if numere:
-#             return int(numere[0])
-        
-#         return None
-        
-#     except Exception as e:
-#         print(f"Eroare OCR: {e}")
-#         return None
-
+# Initialize logger
+logger = TicTacToeLogger()
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -135,29 +126,10 @@ class Erou:
             butonUpgradeY=butonUpgradeY+155  #152
 
     def click_upgrade(self):        #verificam daca este clickable (cand tin cursorul pe buton i se schimba culoarea)
-        # global scrollBarY,scrollBarX
-        # if self.scrollPixels==True:
-        #     pyautogui.moveTo(scrollBarX, scrollBarY)
-        #     pyautogui.mouseDown()
-        #     pyautogui.move(0, 142, duration=0.1)  # scroll down 100 pixeli
-        #     pyautogui.mouseUp()
-        #     scrollBarY=scrollBarY+152
-
-        # Convertim pixeli în unități de scroll (empiric)
-        # units = int(self.scrollPixels / 3)  # 3 pixeli ≈ 1 unitate (poate varia)
-        # win32api.mouse_event(win32con.MOUSEEVENTF_WHEEL, 0, 0, -units, 0)
-
-        # if levels10 == True:
-        #     pyautogui.keyDown('shift')
-
         pyautogui.moveTo(self.upgradeX,self.upgradeY)
         for i in range(1, self.scrollUnits + 1):
             pyautogui.scroll(-self.scrollUnits)
             pyautogui.move(0, -65)
-
-        # if self.scrollUnits == 9:
-        #     pyautogui.scroll(self.scrollUnits)
-        #     self.upgradeY=self.upgradeY+152
         
         pyautogui.click()
         pyautogui.click()
@@ -173,33 +145,6 @@ class Erou:
         for i in range(1, self.scrollUnits + 1):
             pyautogui.scroll(self.scrollUnits)
             pyautogui.move(0, 65)
-        
-        # if self.scrollUnits == 9:
-        #     pyautogui.scroll(-self.scrollUnits)
-        #     self.upgradeY=self.upgradeY-152
-    
-        # if levels10 == True:
-        #     pyautogui.keyUp('shift')
-        #     levels10=False
-        # else:
-        #     levels10=True
-
-    # def get_level(self):
-    #     pyautogui.moveTo(self.upgradeX,self.upgradeY)
-    #     for i in range(1, self.scrollUnits + 1):
-    #         pyautogui.scroll(-self.scrollUnits)
-    #         pyautogui.move(0, -65)
-
-    #     x, y = pyautogui.position()
-    #     number=extract_single_number_optimized(x,y)
-
-    #     print(number)
-
-    #     for i in range(1, self.scrollUnits + 1):
-    #         pyautogui.scroll(self.scrollUnits)
-    #         pyautogui.move(0, 65)
-
-
 
 eroi = [
     Erou("Cid",0),
@@ -214,10 +159,7 @@ eroi = [
     Erou("Alexa",6),
     Erou("Natalia",7),
     Erou("Mercedes",8)
-    #Erou("Bobby",9),
-    #Erou("Broyle",10)
 ]
-
 
 def check_new_level(template_path, confidence=0.8):
     loc = pyautogui.locateCenterOnScreen('exclamare_clicker.png',confidence=0.8)
@@ -287,7 +229,6 @@ def minimax(table, depth, is_maximizing, player, opponent):
 
 def get_next_move_ttt(table, player='X'):
     #cea mai buna miscare pentru un jucator
-
     opponent = '0' if player == 'X' else 'X'
     
     # verifica daca jocul s a terminat
@@ -313,7 +254,6 @@ def get_next_move_ttt(table, player='X'):
     
     return best_move
 
-
 def get_enemy_move(table,cellsCoordinates):
     for i in range(0,3):
         for j in range(0,3):
@@ -325,16 +265,18 @@ def get_enemy_move(table,cellsCoordinates):
                 diff = ImageChops.difference(screenshot, img)
 
                 if diff.getbbox() is None:
-                    print("Nu s-a facut mutarea in aceasta celula")
+                    logger.log_info(f"Nu s-a facut mutarea in celula ({i},{j})")
                 else:
                     table[i][j]='0'
-
-
-    
+                    logger.log_move('0', i, j, table)
+                    logger.log_info(f"Adversarul a facut mutarea in celula ({i},{j})")
+                    return
 
 print("Scriptul a inceput")
 
 if sys.argv[1]=="ClickerHeroes":
+    logger.log_info("Starting ClickerHeroes automation")
+    
     # click pe searchbar
     pyautogui.click(730, 1050)
 
@@ -343,9 +285,6 @@ if sys.argv[1]=="ClickerHeroes":
 
     # deschid jocul
     pyautogui.press('enter')
-
-    #time.sleep(15)
-    
 
     foundStart=False
     while not foundStart:
@@ -363,7 +302,6 @@ if sys.argv[1]=="ClickerHeroes":
     # astept sa se incarce jocul
     time.sleep(7)
 
-
     # inchid notificare daca este nevoie
     closeNotif=False
     attempts=0
@@ -378,33 +316,6 @@ if sys.argv[1]=="ClickerHeroes":
             attempts=attempts+1
             if attempts > 100:
                 break
-
-    # print(pytesseract.get_tesseract_version())
-
-    # screenshot1 = pyautogui.screenshot(region=(618, 450, 80, 40))  # x, y, width, height
-    # screenshot1.save("zona.png")  # doar pentru debug
-    # # OCR pe imagine
-    # text = pytesseract.image_to_string(screenshot1)
-
-    # # Extrage doar cifrele
-    # numere = re.findall(r'\d+', text)
-    # print("Numere detectate:", numere)
-
-    # number = extract_single_number_optimized()
-    # if number:
-    #     print(f"✅ Numărul detectat: {number}")
-    # else:
-    #     print("❌ Nu s-a putut detecta numărul")
-
-    # quit()
-    # exit()
-
-    # time.sleep(100)
-
-    # for erou in eroi:
-    #     erou.get_level()
-
-    # time.sleep(100)
 
     newLevelPress = time.time()
     newLevelInterval = 60  # 60 secunde
@@ -447,8 +358,6 @@ if sys.argv[1]=="ClickerHeroes":
             time.sleep(0.2)
             try:
                 loc1=pyautogui.locateCenterOnScreen('boss_clock_clicker.png',confidence=0.8)
-                # 1350 70 coordonatele de la nivelul anterior
-                # ma duc 4 nivele in spate
                 if loc1:
                     pyautogui.click(1350,70)
                     pyautogui.click(1350,70)
@@ -457,8 +366,6 @@ if sys.argv[1]=="ClickerHeroes":
                     print("Am trecut la nivelul anterior pentru a farma mai mult!")
             except:
                 print("Am reusit sa bat bossul")
-
-        #pyautogui.click(1440, 570)
 
         if time.time() - newLevelPress >= newLevelInterval:
             pyautogui.click(1530, 75)
@@ -479,9 +386,8 @@ if sys.argv[1]=="ClickerHeroes":
                     erou.click_upgrade()
             newUpgradeCheck = time.time()  # resetez timerul
 
-        #880 550
 elif sys.argv[1]=="TicTacToe":
-    print("TicTacToe")
+    logger.log_info("Starting TicTacToe automation")
 
     cellsCoordinates=[
         (679,215),
@@ -508,8 +414,6 @@ elif sys.argv[1]=="TicTacToe":
     pyautogui.press('enter')
 
     time.sleep(1)
-    #loc=pyautogui.locateCenterOnScreen('google_icon.png',confidence=0.8)
-    #pyautogui.click(loc)
     time.sleep(1)
 
     #caut X si 0
@@ -519,53 +423,73 @@ elif sys.argv[1]=="TicTacToe":
     #astept sa se incarce pagina
     time.sleep(3)
 
-    # i=0
-    # for cell in cellsCoordinates:
-    #     screenshot = pyautogui.screenshot(region=(cell[0], cell[1], 182, 183))
-    #     screenshot.save(f"portiune_screenshot{i}.png")
-    #     i=i+1
-
     game=0
-    while True:
-        print("yey")
-        gameOver=False
-        
-        if game == 0:
-            yourTurn=True
-            game=1
-        else:
-            yourTurn=False
-            game=0
-        while gameOver==False:
-            print("yeey")
+    game_counter=0  # Counter separat pentru logging
+    try:
+        while True:
+            gameOver=False
+            game_counter += 1  # Incrementez counter-ul pentru logging
             
-            if yourTurn==True:
-                print("Your Turn")
-
-                (x,y)=get_next_move_ttt(table,'X')
-                table[x][y]='X'
-                pyautogui.click(cellsCoordinates[3*x+y])
-                yourTurn=False
-            else:
-                print("Enemy Turn")
-
-                get_enemy_move(table,cellsCoordinates)
+            player_starts = (game == 0)
+            logger.log_game_start(game_counter, player_starts)
+            
+            if game == 0:
                 yourTurn=True
+                game=1
+            else:
+                yourTurn=False
+                game=0
+                
+            while gameOver==False:
+                if yourTurn==True:
+                    logger.log_info("Player's turn")
 
-            win=check_win_ttt(table)
-            if win != '-' or (win=='-' and is_board_full(table)==True):
-                gameOver=True
+                    (x,y)=get_next_move_ttt(table,'X')
+                    if x != -1 and y != -1:
+                        table[x][y]='X'
+                        logger.log_move('X', x, y, table)
+                        pyautogui.click(cellsCoordinates[3*x+y])
+                    yourTurn=False
+                else:
+                    logger.log_info("Enemy's turn")
+                    get_enemy_move(table,cellsCoordinates)
+                    yourTurn=True
+
+                win=check_win_ttt(table)
+                if win != '-':
+                    if win == 'X':
+                        result = "WIN"
+                    else:
+                        result = "LOSS"
+                    logger.log_game_end(result, table)
+                    gameOver=True
+                    time.sleep(1)
+                    pyautogui.click(cellsCoordinates[0][0], cellsCoordinates[0][1])
+                elif win=='-' and is_board_full(table)==True:
+                    logger.log_game_end("DRAW", table)
+                    gameOver=True
+                    time.sleep(1)
+                    pyautogui.click(cellsCoordinates[0][0], cellsCoordinates[0][1])
+                    
                 time.sleep(1)
-                pyautogui.click(cellsCoordinates[0][0], cellsCoordinates[0][1])
+
+            # Reset board
+            for i in range(0,3):
+                for j in range(0,3):
+                    table[i][j]='-'
+
             time.sleep(1)
+            
+    except KeyboardInterrupt:
+        logger.log_info("Game interrupted by user")
+        logger.log_session_end()
+    except Exception as e:
+        logger.log_error(f"Unexpected error: {str(e)}")
+        logger.log_session_end()
 
-
-        for i in range(0,3):
-            for j in range(0,3):
-                table[i][j]='-'
-
-        time.sleep(1)
 else:
+    logger.log_error(f"Invalid argument: {sys.argv[1]}")
+    
     # deschid notepad
     subprocess.Popen('notepad.exe')
 
@@ -576,3 +500,6 @@ else:
     pyautogui.hotkey('ctrl', 'n')
 
     pyautogui.write("Argumentul dat nu este un nume valid al unui joc pe care il automatizeaza scriptul!")
+
+# Log session end when script terminates
+logger.log_session_end()
